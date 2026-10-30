@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WalletWatch - Ethereum Wallet Activity Analyzer</title>
+    <meta name="description" content="Analyze Ethereum wallet transactions, real-time balances, incoming and outgoing flows, and blockchain activity using the Etherscan API." />
+    <meta property="og:title" content="WalletWatch - Ethereum Wallet Activity Analyzer" />
+    <meta property="og:description" content="Analyze Ethereum wallet transactions, real-time balances, incoming and outgoing flows, and blockchain activity using the Etherscan API." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  </head>
+  <body>
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="container header-inner">
+        <a href="/" class="brand">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
+              <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
+              <circle cx="16" cy="14" r="1"></circle>
+            </svg>
+          </div>
+          <div class="brand-title">
+            WalletWatch
+            <span class="brand-tag">Etherscan V2</span>
+          </div>
+        </a>
+
+        <div class="header-badges">
+          <div class="network-badge">
+            <span class="status-dot" id="api-status-dot"></span>
+            <span id="api-status-text">Ethereum Mainnet</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="container">
+
+        <!-- API Configuration Required Warning Banner -->
+        <div id="config-banner" class="notice-banner" style="display: none;">
+          <div class="notice-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </div>
+          <div class="notice-body">
+            <h4>Etherscan API Key Required</h4>
+            <p>
+              To query live Ethereum Mainnet balances and transactions, please configure <code>ETHERSCAN_API_KEY</code> in your server <code>.env</code> file. Get a free API key at <a href="https://etherscan.io/myapikey" target="_blank" rel="noopener noreferrer" style="color: var(--accent-blue); text-decoration: underline;">etherscan.io/myapikey</a>.
+            </p>
+          </div>
+        </div>
+
+        <!-- Error Banner -->
+        <div id="error-banner" class="notice-banner danger" style="display: none;">
+          <div class="notice-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+          </div>
+          <div class="notice-body">
+            <h4>Query Error</h4>
+            <p id="error-message">Could not fetch wallet data.</p>
+          </div>
+        </div>
+
+        <!-- Search Section -->
+        <section class="search-card">
+          <div class="search-header">
+            <h2>Ethereum Wallet Explorer</h2>
+            <p>Analyze on-chain activity, transaction flows, and historical transfers on Ethereum Mainnet.</p>
+          </div>
+
+          <form id="search-form" class="search-form">
+            <div class="input-wrapper">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </span>
+              <input
+                type="text"
+                id="address-input"
+                class="search-input"
+                placeholder="Enter Ethereum address (0x...)"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button type="button" id="clear-btn" class="clear-btn" style="display: none;" title="Clear input">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            <button type="submit" id="search-btn" class="btn-primary">
+              Analyze Wallet
+            </button>
+          </form>
+
+          <div id="validation-hint" class="validation-hint"></div>
+
+          <!-- Quick Sample Wallets -->
+          <div class="sample-wallets">
+            <span class="sample-label">Quick sample wallets:</span>
+            <button type="button" class="sample-chip" data-address="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045">
+              Vitalik Buterin (vitalik.eth)
+            </button>
+            <button type="button" class="sample-chip" data-address="0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe">
+              Ethereum Foundation
+            </button>
+            <button type="button" class="sample-chip" data-address="0x28C6c06298d514Db089934071355E5743bf21d60">
+              Binance 14 Hot Wallet
+            </button>
+            <button type="button" class="sample-chip" data-address="0x0000000000000000000000000000000000000001">
+              Zero Tx Wallet
+            </button>
+          </div>
+        </section>
+
+        <!-- Skeleton Loading State -->
+        <div id="skeleton-state" style="display: none;">
+          <div class="overview-grid">
+            <div class="metric-card skeleton skeleton-card"></div>
+            <div class="metric-card skeleton skeleton-card"></div>
+            <div class="metric-card skeleton skeleton-card"></div>
+            <div class="metric-card skeleton skeleton-card"></div>
+          </div>
+          <div class="analytics-section skeleton" style="height: 200px; margin-bottom: 32px;"></div>
+          <div class="transactions-section skeleton" style="height: 380px;"></div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="state-box">
+          <div class="state-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          </div>
+          <h3 class="state-title">No Wallet Analyzed Yet</h3>
+          <p class="state-desc">
+            Enter an Ethereum wallet address above or click one of the sample wallets to inspect live balances, transaction histories, incoming and outgoing flows, and gas analytics.
+          </p>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboard-content" style="display: none;">
+
+          <!-- Overview Cards -->
+          <section class="overview-grid">
+            <!-- Card 1: Address -->
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">Wallet Address</span>
+                <div class="metric-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </div>
+              </div>
+              <div class="address-display">
+                <span id="overview-address">0x000...0000</span>
+                <button id="copy-address-btn" class="icon-btn" title="Copy Address">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+                <a id="etherscan-address-link" href="#" target="_blank" rel="noopener noreferrer" class="icon-btn" title="View on Etherscan">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </a>
+              </div>
+              <div class="metric-sub">Ethereum Mainnet (Chain ID 1)</div>
+            </div>
+
+            <!-- Card 2: Balance -->
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">ETH Balance</span>
+                <div class="metric-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                </div>
+              </div>
+              <div id="overview-balance-eth" class="metric-value font-mono">0.00 ETH</div>
+              <div class="metric-sub">
+                <span>Wei:</span>
+                <span id="overview-balance-wei" style="font-family: var(--font-mono); font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">0</span>
+              </div>
+            </div>
+
+            <!-- Card 3: Total Transactions Fetched -->
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">Transactions Fetched</span>
+                <div class="metric-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
+                </div>
+              </div>
+              <div id="overview-tx-count" class="metric-value">0</div>
+              <div class="metric-sub">Recent normal on-chain transfers</div>
+            </div>
+
+            <!-- Card 4: Net Flow -->
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">Net Transfer Flow</span>
+                <div class="metric-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                </div>
+              </div>
+              <div id="overview-net-flow" class="metric-value font-mono">0.00 ETH</div>
+              <div class="metric-sub">Incoming volume − Outgoing volume</div>
+            </div>
+          </section>
+
+          <!-- Transaction Analytics -->
+          <section class="analytics-section">
+            <div class="section-header">
+              <h3 class="section-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+                Transaction Analytics
+              </h3>
+              <span style="font-size: 0.8rem; color: var(--text-dim);">Based on fetched normal transfers (excluding failed)</span>
+            </div>
+
+            <div class="analytics-grid">
+              <div class="analytics-item incoming">
+                <div class="label">Total Incoming ETH</div>
+                <div class="val" id="stat-incoming-eth">0 ETH</div>
+                <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 4px;">
+                  <span id="stat-incoming-count">0</span> incoming transfers
+                </div>
+              </div>
+
+              <div class="analytics-item outgoing">
+                <div class="label">Total Outgoing ETH</div>
+                <div class="val" id="stat-outgoing-eth">0 ETH</div>
+                <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 4px;">
+                  <span id="stat-outgoing-count">0</span> outgoing transfers
+                </div>
+              </div>
+
+              <div class="analytics-item">
+                <div class="label">Average Transfer Value</div>
+                <div class="val" id="stat-avg-value">0 ETH</div>
+                <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 4px;">Per successful transfer</div>
+              </div>
+
+              <div class="analytics-item">
+                <div class="label">Total Gas Fees Paid</div>
+                <div class="val" id="stat-gas-fees" style="color: var(--accent-purple);">0 ETH</div>
+                <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 4px;">Spent on outgoing transactions</div>
+              </div>
+            </div>
+
+            <!-- Volume Flow Ratio -->
+            <div class="flow-bar-wrapper">
+              <div class="flow-bar-labels">
+                <span style="color: var(--color-incoming);">Incoming Volume: <strong id="flow-incoming-percent">50%</strong></span>
+                <span style="color: var(--color-outgoing);">Outgoing Volume: <strong id="flow-outgoing-percent">50%</strong></span>
+              </div>
+              <div class="flow-bar-track">
+                <div id="flow-bar-incoming" class="flow-bar-incoming" style="width: 50%;"></div>
+                <div id="flow-bar-outgoing" class="flow-bar-outgoing" style="width: 50%;"></div>
+              </div>
+            </div>
+
+            <!-- ETH Balance Trend Line Chart (D3.js) -->
+            <div class="chart-container-card">
+              <div class="chart-header">
+                <div>
+                  <h4 class="chart-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    ETH Balance Trend
+                    <span class="brand-tag">Last 20 Transactions</span>
+                  </h4>
+                  <p class="chart-subtitle">Reconstructed historical balance progression across recent on-chain transfers</p>
+                </div>
+                <div class="chart-summary-stats">
+                  <div class="chart-stat-chip">
+                    <span class="label">Starting:</span>
+                    <span id="chart-start-balance" class="val">-- ETH</span>
+                  </div>
+                  <div class="chart-stat-chip">
+                    <span class="label">Current:</span>
+                    <span id="chart-end-balance" class="val">-- ETH</span>
+                  </div>
+                  <div class="chart-stat-chip">
+                    <span class="label">Trend Delta:</span>
+                    <span id="chart-delta-balance" class="val">-- ETH</span>
+                  </div>
+                </div>
+              </div>
+
+              <div id="chart-wrapper" class="chart-wrapper">
+                <div id="chart-empty-msg" style="display: none; text-align: center; padding: 60px 20px; color: var(--text-dim);">
+                  Not enough transaction history to render balance trend.
+                </div>
+                <svg id="balance-chart-svg" width="100%" height="280"></svg>
+                <div id="chart-tooltip" class="chart-tooltip" style="display: none;"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Transaction History Table -->
+          <section class="transactions-section">
+            <div class="section-header">
+              <h3 class="section-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                Transaction History
+                <span id="tx-count-badge" class="brand-tag">0 shown</span>
+              </h3>
+
+              <div class="table-controls">
+                <!-- Direction Segmented Filter -->
+                <div class="filter-group">
+                  <button type="button" class="filter-btn active" data-filter-dir="ALL">All</button>
+                  <button type="button" class="filter-btn" data-filter-dir="INCOMING">Incoming</button>
+                  <button type="button" class="filter-btn" data-filter-dir="OUTGOING">Outgoing</button>
+                  <button type="button" class="filter-btn" data-filter-dir="SELF">Self</button>
+                </div>
+
+                <!-- Search inside transactions -->
+                <input
+                  type="text"
+                  id="tx-search-input"
+                  class="search-filter-input"
+                  placeholder="Filter by hash or address..."
+                />
+
+                <!-- Sort Order -->
+                <select id="sort-select" class="sort-select">
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="highest">Highest Value</option>
+                  <option value="lowest">Lowest Value</option>
+                </select>
+
+                <!-- Page Size / Limit -->
+                <select id="page-size-select" class="sort-select">
+                  <option value="20">Latest 20 txs</option>
+                  <option value="50">Latest 50 txs</option>
+                  <option value="100">Latest 100 txs</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="tx-table">
+                <thead>
+                  <tr>
+                    <th>Direction / Status</th>
+                    <th>Tx Hash / Block</th>
+                    <th>Date & Time (UTC)</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Value (ETH)</th>
+                    <th>Tx Fee</th>
+                  </tr>
+                </thead>
+                <tbody id="tx-table-body">
+                  <!-- Rows injected dynamically via app.js -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span id="toast-message">Copied to clipboard</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="container footer-inner">
+        <div class="disclaimer">
+          <strong>Educational Disclaimer:</strong> WalletWatch is an educational blockchain activity analyzer. It is designed solely for data exploration and transaction visualization on the Ethereum Mainnet. It does not provide financial, investment, or trading recommendations. All data is fetched live from Ethereum Mainnet via Etherscan API V2.
+        </div>
+        <div class="footer-meta">
+          <div>&copy; 2026 WalletWatch. Data provided by Etherscan API V2.</div>
+          <div>No financial advice · Ethereum Mainnet (Chain ID 1)</div>
+        </div>
+      </div>
+    </footer>
+
+    <script src="/static/js/d3.min.js"></script>
+    <script src="/static/js/app.js"></script>
+  </body>
+</html>

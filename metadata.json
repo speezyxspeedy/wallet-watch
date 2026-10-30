@@ -1,0 +1,6 @@
+{
+  "name": "WalletWatch - Ethereum Wallet Activity Analyzer",
+  "description": "Analyze Ethereum wallet transactions, real-time balances, incoming and outgoing flows, and blockchain activity using the Etherscan API.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
